@@ -13,7 +13,14 @@ public class SaveManager : MonoBehaviour {
         Instance = this;
         Load();
 
-        Debug.Log(Helper.Serialize<SaveState>(state));
+        Debug.Log(state.colorOwned);
+        UnlockColor(0);
+        Debug.Log(state.colorOwned);
+        UnlockColor(1);
+        Debug.Log(state.colorOwned);
+        UnlockColor(2);
+        Debug.Log(state.colorOwned);
+        UnlockColor(3);
     }
 
     // Save the whole state of this saveState script to the player pref
@@ -35,5 +42,39 @@ public class SaveManager : MonoBehaviour {
             Save();
             Debug.Log("No save state found, creating new one");
         }
+    }
+
+    // Check if the color is owned
+    public bool IsColorOwned(int index)
+    {
+        // Check if the bit is set, if so the color is owned
+        return(state.colorOwned & (1 << index)) != 0;
+    }
+
+    // Check if the trail is owned
+    public bool IsTrailOwned(int index)
+    {
+        // Check if the bit is set, if so the trail is owned
+        return (state.trailOwned & (1 << index)) != 0;
+    }
+
+    // Unlock a color in the "colorOwned" int
+    public void UnlockColor(int index)
+    {
+        // Toggle on the bit at index
+        state.colorOwned |= 1 << index; // |= is the toggle on
+    }
+
+    // Unlock a color in the "colorOwned" int
+    public void UnlockTrail(int index)
+    {
+        // Toggle on the bit at index
+        state.trailOwned |= 1 << index; // |= is the toggle on
+    }
+
+    // Reset the whole save-file
+    public void ResetSave()
+    {
+        PlayerPrefs.DeleteKey("save");
     }
 }
