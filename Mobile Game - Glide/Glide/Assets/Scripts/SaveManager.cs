@@ -9,18 +9,11 @@ public class SaveManager : MonoBehaviour {
 
     private void Awake()
     {
+        ResetSave();
+
         DontDestroyOnLoad(gameObject);
         Instance = this;
         Load();
-
-        Debug.Log(state.colorOwned);
-        UnlockColor(0);
-        Debug.Log(state.colorOwned);
-        UnlockColor(1);
-        Debug.Log(state.colorOwned);
-        UnlockColor(2);
-        Debug.Log(state.colorOwned);
-        UnlockColor(3);
     }
 
     // Save the whole state of this saveState script to the player pref
@@ -56,6 +49,48 @@ public class SaveManager : MonoBehaviour {
     {
         // Check if the bit is set, if so the trail is owned
         return (state.trailOwned & (1 << index)) != 0;
+    }
+
+    // Attempt buying a color
+    public bool BuyColor(int index, int cost)
+    {
+        if(state.gold >= cost)
+        {
+            // Enough money, remove from current gold stack
+            state.gold -= cost;
+            UnlockColor(index);
+
+            // Save progress
+            Save();
+
+            return true;
+        }
+        else
+        {
+            // Not enough money, return false
+            return false;
+        }
+    }
+
+    // Attempt buying a trail
+    public bool BuyTrail(int index, int cost)
+    {
+        if (state.gold >= cost)
+        {
+            // Enough money, remove from current gold stack
+            state.gold -= cost;
+            UnlockTrail(index);
+
+            // Save progress
+            Save();
+
+            return true;
+        }
+        else
+        {
+            // Not enough money, return false
+            return false;
+        }
     }
 
     // Unlock a color in the "colorOwned" int
