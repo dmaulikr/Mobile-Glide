@@ -107,6 +107,17 @@ public class SaveManager : MonoBehaviour {
         state.trailOwned |= 1 << index; // |= is the toggle on
     }
 
+    // Complete Level
+    public void CompleteLevel(int index)
+    {
+        // if this is the current active level
+        if(state.completedLevel == index)
+        {
+            state.completedLevel++;
+            Save();
+        }
+    }
+
     // Reset the whole save-file
     public void ResetSave()
     {

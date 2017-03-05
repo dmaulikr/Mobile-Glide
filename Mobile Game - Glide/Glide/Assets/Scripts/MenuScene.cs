@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class MenuScene : MonoBehaviour {
 
@@ -14,6 +15,7 @@ public class MenuScene : MonoBehaviour {
     public Transform levelPanel;
     public Transform colorPanel;
     public Transform trailPanel;
+    public Text goldText;
 
     public Text colorBuySetText;
     public Text trailBuySetText;
@@ -22,12 +24,28 @@ public class MenuScene : MonoBehaviour {
     private int[] trailCost = new int[] { 0, 20, 40, 40, 60, 60, 80, 80, 100, 100 };
     private int selectedColorIndex;
     private int selectedTrailIndex;
+    private int activeColorIndex;
+    private int activeTrailIndex;
 
 
     private Vector3 desiredMenuPosition;
 
+    public AnimationCurve enteringLevelZoomCurve;
+    private bool isEnteringLevel = false;
+    private float zoomDuration = 3.0f;
+    private float zoomTransition;
+
     private void Start()
     {
+        // $$ TEMPORARY
+        SaveManager.Instance.state.gold = 999;
+
+        // Position our camera on the focused menu
+        SetCameraTo(Manager.Instance.menuFocus);
+
+        // Tell our gold text what to display
+        UpdateGoldText();
+
         // Grab the only CanvasGroup in the scene
         fadeGroup = FindObjectOfType<CanvasGroup>();
 
@@ -40,6 +58,17 @@ public class MenuScene : MonoBehaviour {
         // Add buttons on-click events to level-select
         InitializeLevel();
 
+        // Set player's preferences (color & trail)
+        OnColorSelect(SaveManager.Instance.state.activeColor);
+        SetColor(SaveManager.Instance.state.activeColor);
+
+        OnTrailSelect(SaveManager.Instance.state.activeTrail);
+        SetTrail(SaveManager.Instance.state.activeTrail);
+
+        // Make the buttons bigger for the selected items
+        colorPanel.GetChild(SaveManager.Instance.state.activeColor).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
+        trailPanel.GetChild(SaveManager.Instance.state.activeTrail).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
+
     }
 
     private void Update()
@@ -49,6 +78,36 @@ public class MenuScene : MonoBehaviour {
 
         // Menu navigation (smooth)
         menuContainer.anchoredPosition3D = Vector3.Lerp(menuContainer.anchoredPosition3D, desiredMenuPosition, 0.1f);
+
+        // Entering level zoom
+        if(isEnteringLevel)
+        {
+            // Add to the zoomTransition float
+            zoomTransition += (1 / zoomDuration) * Time.deltaTime;
+
+            // Change the scale, following the animation curve
+            menuContainer.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 5, enteringLevelZoomCurve.Evaluate(zoomTransition));
+
+            // Change th edesired position of the canvas, so it can follow the scale up
+            // This zooms in the center
+            Vector3 newDesiredPosition = desiredMenuPosition * 5;
+            // This adds to the specific position of the level on the canvas
+            RectTransform rt = levelPanel.GetChild(Manager.Instance.currentLevel).GetComponent<RectTransform>();
+            newDesiredPosition -= rt.anchoredPosition3D * 5;
+
+            // This line will override the previous position update
+            menuContainer.anchoredPosition3D = Vector3.Lerp(desiredMenuPosition, newDesiredPosition, enteringLevelZoomCurve.Evaluate(zoomTransition));
+
+            // Fade to white screen, this will override the first line of the update
+            fadeGroup.alpha = zoomTransition;
+
+            // Are we done with the animation
+            if(zoomTransition >= 1)
+            {
+                // Enter level!
+                SceneManager.LoadScene("Game");
+            }
+        }
     }
 
     private void InitializeShop()
@@ -67,6 +126,10 @@ public class MenuScene : MonoBehaviour {
             Button b = t.GetComponent<Button>();
             b.onClick.AddListener(() => OnColorSelect(currentIndex));
 
+            // Set the color of the image, based on if owned or not (faded/sharp)
+            Image img = t.GetComponent<Image>();
+            img.color = SaveManager.Instance.IsColorOwned(i) ? Color.white : new Color(0.7f, 0.7f, 0.7f);
+
             i++;
         }
 
@@ -78,6 +141,10 @@ public class MenuScene : MonoBehaviour {
             int currentIndex = i;
             Button b = t.GetComponent<Button>();
             b.onClick.AddListener(() => OnTrailSelect(currentIndex));
+
+            // Set the color of the image, based on if owned or not (faded/sharp)
+            Image img = t.GetComponent<Image>();
+            img.color = SaveManager.Instance.IsTrailOwned(i) ? Color.white : new Color(0.7f, 0.7f, 0.7f);
 
             i++;
         }
@@ -98,6 +165,32 @@ public class MenuScene : MonoBehaviour {
             int currentIndex = i;
             Button b = t.GetComponent<Button>();
             b.onClick.AddListener(() => OnLevelSelect(currentIndex));
+
+            Image img = t.GetComponent<Image>();
+
+            // Is it unlocked?
+            if(i <= SaveManager.Instance.state.completedLevel)
+            {
+                // It is unlocked!
+                if(i == SaveManager.Instance.state.completedLevel)
+                {
+                    // It's not completed
+                    img.color = Color.white;
+                }
+                else
+                {
+                    // Level is already unlocked
+                    img.color = Color.green;
+                }
+            }
+            else
+            {
+                // Level isn't unlocked, disable the button
+                b.interactable = false;
+
+                // Set to a dark color
+                img.color = Color.grey;
+            }
 
             i++;
         }
@@ -124,20 +217,45 @@ public class MenuScene : MonoBehaviour {
         }
     }
 
+    private void SetCameraTo(int menuIndex)
+    {
+        NavigateTo(menuIndex);
+        menuContainer.anchoredPosition3D = desiredMenuPosition;
+    }
+
     private void SetColor(int index)
     {
+        // Set the active index
+        activeColorIndex = index;
+        SaveManager.Instance.state.activeColor = index;
+
         // Change the color on the player model
 
         // Change buy/set button text
         colorBuySetText.text = "Current";
+
+        // Remember preferences
+        SaveManager.Instance.Save();
     }
 
     private void  SetTrail(int index)
     {
+        // Set the active index
+        activeTrailIndex = index;
+        SaveManager.Instance.state.activeTrail = index;
+
         // Change the color on the player model
 
         // Change buy/set trail text
         trailBuySetText.text = "Current";
+
+        // Remember preferences
+        SaveManager.Instance.Save();
+    }
+
+    private void UpdateGoldText()
+    {
+        goldText.text = SaveManager.Instance.state.gold.ToString();
     }
 
     // Buttons
@@ -163,6 +281,16 @@ public class MenuScene : MonoBehaviour {
     {
         Debug.Log("Selecting color button : " + currentIndex);
 
+        // If the button clicked is already selected, exit
+        if (selectedColorIndex == currentIndex)
+            return;
+
+        // Maker the icon slightly bigger
+        colorPanel.GetChild(currentIndex).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
+
+        // Put the previous one to normal
+        colorPanel.GetChild(selectedColorIndex).GetComponent<RectTransform>().localScale = Vector3.one;
+
         // Set the selected color
         selectedColorIndex = currentIndex;
 
@@ -170,7 +298,16 @@ public class MenuScene : MonoBehaviour {
         if(SaveManager.Instance.IsColorOwned(currentIndex))
         {
             // Color is owned
-            colorBuySetText.text = "Select";
+            // Is it already our current color?
+            if(activeColorIndex == currentIndex)
+            {
+                colorBuySetText.text = "Current";
+            }
+            else
+            {
+                colorBuySetText.text = "Select";
+            }
+            
         }
         else
         {
@@ -184,6 +321,16 @@ public class MenuScene : MonoBehaviour {
     {
         Debug.Log("Selecting trail button : " + currentIndex);
 
+        // If the button clicked is already selected, exit
+        if (selectedTrailIndex == currentIndex)
+            return;
+
+        // Maker the icon slightly bigger
+        trailPanel.GetChild(currentIndex).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
+
+        // Put the previous one to normal
+        trailPanel.GetChild(selectedTrailIndex).GetComponent<RectTransform>().localScale = Vector3.one;
+
         // Set the selected Trail
         selectedTrailIndex = currentIndex;
 
@@ -191,7 +338,15 @@ public class MenuScene : MonoBehaviour {
         if (SaveManager.Instance.IsTrailOwned(currentIndex))
         {
             // Trail is owned
-            trailBuySetText.text = "Select";
+            // Is it already our current trail?
+            if (activeTrailIndex == currentIndex)
+            {
+                trailBuySetText.text = "Current";
+            }
+            else
+            {
+                trailBuySetText.text = "Select";
+            }
         }
         else
         {
@@ -202,7 +357,12 @@ public class MenuScene : MonoBehaviour {
 
     private void OnLevelSelect(int currentIndex)
     {
+        Manager.Instance.currentLevel = currentIndex;
+        //SceneManager.LoadScene("Game");
+        isEnteringLevel = true;
+
         Debug.Log("Selecting LEvel : " + currentIndex);
+
     }
 
     public void OnColorBuySet()
@@ -222,6 +382,12 @@ public class MenuScene : MonoBehaviour {
             {
                 // Success! 
                 SetColor(selectedColorIndex);
+
+                // Change the color of the button
+                colorPanel.GetChild(selectedColorIndex).GetComponent<Image>().color = Color.white;
+
+                // Update the gold text
+                UpdateGoldText();
             }
             else
             {
@@ -249,6 +415,12 @@ public class MenuScene : MonoBehaviour {
             {
                 // Success! 
                 SetTrail(selectedTrailIndex);
+
+                // Change the color of the button
+                trailPanel.GetChild(selectedTrailIndex).GetComponent<Image>().color = Color.white;
+
+                // Update the gold text
+                UpdateGoldText();
             }
             else
             {
