@@ -35,8 +35,13 @@ public class MenuScene : MonoBehaviour {
     private float zoomDuration = 3.0f;
     private float zoomTransition;
 
+    private MenuCamera menuCam;
+
     private void Start()
     {
+        // Find the only MenuCamer and assign it
+        menuCam = FindObjectOfType<MenuCamera>();
+
         // $$ TEMPORARY
         SaveManager.Instance.state.gold = 999;
 
@@ -204,15 +209,18 @@ public class MenuScene : MonoBehaviour {
             default:
             case 0:
                 desiredMenuPosition = Vector3.zero;
+                menuCam.BackToMainMenu();
                 break;
 
             // 1 = Play Menu
             case 1:
                 desiredMenuPosition = Vector3.right * 1280;
+                menuCam.MoveToLevel();
                 break;
             // 2 = Shop MEnu
             case 2:
                 desiredMenuPosition = Vector3.left * 1280;
+                menuCam.MoveToShop();
                 break;
         }
     }
