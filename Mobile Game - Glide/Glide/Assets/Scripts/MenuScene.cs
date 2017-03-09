@@ -30,6 +30,8 @@ public class MenuScene : MonoBehaviour {
 
     private Vector3 desiredMenuPosition;
 
+    private GameObject currentTrail;
+
     public AnimationCurve enteringLevelZoomCurve;
     private bool isEnteringLevel = false;
     private float zoomDuration = 3.0f;
@@ -133,7 +135,9 @@ public class MenuScene : MonoBehaviour {
 
             // Set the color of the image, based on if owned or not (faded/sharp)
             Image img = t.GetComponent<Image>();
-            img.color = SaveManager.Instance.IsColorOwned(i) ? Color.white : new Color(0.7f, 0.7f, 0.7f);
+            img.color = SaveManager.Instance.IsColorOwned(i) 
+                ? Manager.Instance.playerColors[currentIndex] 
+                : Color.Lerp(Manager.Instance.playerColors[currentIndex], new Color(0,0,0,1), 0.25f);
 
             i++;
         }
@@ -238,7 +242,8 @@ public class MenuScene : MonoBehaviour {
         SaveManager.Instance.state.activeColor = index;
 
         // Change the color on the player model
-
+        Manager.Instance.playerMaterial.color = Manager.Instance.playerColors[index];
+        
         // Change buy/set button text
         colorBuySetText.text = "Current";
 
@@ -253,6 +258,21 @@ public class MenuScene : MonoBehaviour {
         SaveManager.Instance.state.activeTrail = index;
 
         // Change the color on the player model
+        if(currentTrail != null)
+        {
+            Destroy(currentTrail);
+        }
+
+        // Create the new trail
+        currentTrail = Instantiate(Manager.Instance.playerTrails[index]) as GameObject;
+
+        // Set it as a child of the player
+        currentTrail.transform.SetParent(FindObjectOfType<MenuPlayer>().transform);
+
+        // Fix the wierd scaling/rotations issues
+        currentTrail.transform.localPosition = Vector3.zero;
+        currentTrail.transform.localRotation = Quaternion.Euler(0, 0, 90);
+        currentTrail.transform.localScale = Vector3.one * 0.01f;
 
         // Change buy/set trail text
         trailBuySetText.text = "Current";
@@ -392,7 +412,7 @@ public class MenuScene : MonoBehaviour {
                 SetColor(selectedColorIndex);
 
                 // Change the color of the button
-                colorPanel.GetChild(selectedColorIndex).GetComponent<Image>().color = Color.white;
+                colorPanel.GetChild(selectedColorIndex).GetComponent<Image>().color = Manager.Instance.playerColors[selectedColorIndex];
 
                 // Update the gold text
                 UpdateGoldText();

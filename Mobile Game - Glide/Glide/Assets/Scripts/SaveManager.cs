@@ -9,7 +9,7 @@ public class SaveManager : MonoBehaviour {
 
     private void Awake()
     {
-        ResetSave();
+        //ResetSave();
 
         DontDestroyOnLoad(gameObject);
         Instance = this;
