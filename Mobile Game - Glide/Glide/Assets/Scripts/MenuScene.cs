@@ -39,6 +39,12 @@ public class MenuScene : MonoBehaviour {
 
     private MenuCamera menuCam;
 
+    private Texture previousTrail;
+    private GameObject lastPreviewObject;
+
+    public Transform trailPreviewObject;
+    public RenderTexture trailPreviewTexture;
+
     private void Start()
     {
         // Find the only MenuCamer and assign it
@@ -75,6 +81,11 @@ public class MenuScene : MonoBehaviour {
         // Make the buttons bigger for the selected items
         colorPanel.GetChild(SaveManager.Instance.state.activeColor).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
         trailPanel.GetChild(SaveManager.Instance.state.activeTrail).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
+
+        // Create the trail preview
+        lastPreviewObject = GameObject.Instantiate(Manager.Instance.playerTrails[SaveManager.Instance.state.activeTrail]) as GameObject;
+        lastPreviewObject.transform.SetParent(trailPreviewObject);
+        lastPreviewObject.transform.localPosition = Vector3.zero;
 
     }
 
@@ -152,11 +163,14 @@ public class MenuScene : MonoBehaviour {
             b.onClick.AddListener(() => OnTrailSelect(currentIndex));
 
             // Set the color of the image, based on if owned or not (faded/sharp)
-            Image img = t.GetComponent<Image>();
+            RawImage img = t.GetComponent<RawImage>();
             img.color = SaveManager.Instance.IsTrailOwned(i) ? Color.white : new Color(0.7f, 0.7f, 0.7f);
 
             i++;
         }
+
+        // Set the previous trail to prevent bug when swapping later
+        previousTrail = trailPanel.GetChild(SaveManager.Instance.state.activeTrail).GetComponent<RawImage>().texture;
     }
 
     private void InitializeLevel()
@@ -353,11 +367,29 @@ public class MenuScene : MonoBehaviour {
         if (selectedTrailIndex == currentIndex)
             return;
 
+        // Preview Trail
+
+        // Get the image of the preview button
+        trailPanel.GetChild(selectedTrailIndex).GetComponent<RawImage>().texture = previousTrail;
+        // Keep the new trail's preview image in the previous trail
+        previousTrail = trailPanel.GetChild(currentIndex).GetComponent<RawImage>().texture;
+        // Set the new trail preciew image to the other camera
+        trailPanel.GetChild(currentIndex).GetComponent<RawImage>().texture = trailPreviewTexture;
+
         // Maker the icon slightly bigger
         trailPanel.GetChild(currentIndex).GetComponent<RectTransform>().localScale = Vector3.one * 1.125f;
 
         // Put the previous one to normal
         trailPanel.GetChild(selectedTrailIndex).GetComponent<RectTransform>().localScale = Vector3.one;
+
+        // Change the physical object pf the trail preview
+        if(lastPreviewObject != null)
+        {
+            Destroy(lastPreviewObject);
+        }
+        lastPreviewObject = GameObject.Instantiate(Manager.Instance.playerTrails[currentIndex]) as GameObject;
+        lastPreviewObject.transform.SetParent(trailPreviewObject);
+        lastPreviewObject.transform.localPosition = Vector3.zero;
 
         // Set the selected Trail
         selectedTrailIndex = currentIndex;
@@ -445,7 +477,7 @@ public class MenuScene : MonoBehaviour {
                 SetTrail(selectedTrailIndex);
 
                 // Change the color of the button
-                trailPanel.GetChild(selectedTrailIndex).GetComponent<Image>().color = Color.white;
+                trailPanel.GetChild(selectedTrailIndex).GetComponent<RawImage>().color = Color.white;
 
                 // Update the gold text
                 UpdateGoldText();
