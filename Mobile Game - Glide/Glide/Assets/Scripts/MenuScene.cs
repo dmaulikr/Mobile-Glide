@@ -15,10 +15,14 @@ public class MenuScene : MonoBehaviour {
     public Transform levelPanel;
     public Transform colorPanel;
     public Transform trailPanel;
-    public Text goldText;
+
+    public Button tiltControlButton;
+    public Color tiltControlEnabled;
+    public Color tiltControlDisabled;
 
     public Text colorBuySetText;
     public Text trailBuySetText;
+    public Text goldText;
 
     private int[] colorCost = new int[] { 0, 5, 5, 5, 10, 10, 10, 15, 15, 15 };
     private int[] trailCost = new int[] { 0, 20, 40, 40, 60, 60, 80, 80, 100, 100 };
@@ -47,11 +51,21 @@ public class MenuScene : MonoBehaviour {
 
     private void Start()
     {
+        
+        // Check if we have an acceleremotere
+        if(SystemInfo.supportsAccelerometer)
+        {
+            // Is it currentlyu enabled?
+            tiltControlButton.GetComponent<Image>().color = (SaveManager.Instance.state.usingAccelerometer) ? tiltControlEnabled : tiltControlDisabled;
+        }
+        else
+        {
+            tiltControlButton.gameObject.SetActive(false);
+        }
+
+
         // Find the only MenuCamer and assign it
         menuCam = FindObjectOfType<MenuCamera>();
-
-        // $$ TEMPORARY
-        SaveManager.Instance.state.gold = 999;
 
         // Position our camera on the focused menu
         SetCameraTo(Manager.Instance.menuFocus);
@@ -489,5 +503,17 @@ public class MenuScene : MonoBehaviour {
                 Debug.Log("Not enough gold.");
             }
         }
+    }
+
+    public void OnTiltControl()
+    {
+        // Toggle the accelermoeter bool
+        SaveManager.Instance.state.usingAccelerometer = !SaveManager.Instance.state.usingAccelerometer;
+
+        // Make sure we save the players preferences
+        SaveManager.Instance.Save();
+
+        //Change the display image of the til control button
+        tiltControlButton.GetComponent<Image>().color = (SaveManager.Instance.state.usingAccelerometer) ? tiltControlEnabled : tiltControlDisabled;
     }
 }
